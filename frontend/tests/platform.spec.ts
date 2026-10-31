@@ -16,7 +16,7 @@ test("register → verify → sign in → simulated purchase → upload → chec
     .click();
   await expect(page).toHaveURL(/\/app$/);
   const token = execFileSync(
-    path.resolve("../.venv/bin/python"),
+    path.resolve("../.venv", process.platform === "win32" ? "Scripts/python.exe" : "bin/python"),
     [
       "-c",
       `import os,django;os.environ.setdefault('DJANGO_SETTINGS_MODULE','config.settings');django.setup();from apps.accounts.models import User;from django.core import signing;u=User.objects.get(email='${email}');print(signing.dumps({'id':str(u.pk),'email':u.email},salt='email-verify'))`,

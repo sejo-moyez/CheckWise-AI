@@ -1,6 +1,18 @@
 name: validation
 on: [push, pull_request]
 jobs:
+  windows-setup:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - uses: actions/setup-node@v4
+        with: {node-version: "24"}
+      - run: bash scripts/install.sh
+        shell: bash
+      - run: bash scripts/test.sh
+        shell: bash
   test:
     runs-on: ubuntu-latest
     services:

@@ -4,6 +4,8 @@ No public deployment or real financial transaction has been performed. Public la
 
 ## Local development
 
+Windows users can run the Bash scripts in Git Bash after installing Python 3.12 (including the `py` launcher) and Node.js. The scripts detect the Windows `Scripts/python.exe` virtualenv layout and fail early with installation guidance if a prerequisite is absent. See README for Windows installer commands. Native Windows uses eager development tasks; production Gunicorn and real Celery workers run in Linux containers.
+
 Use Python 3.12 and Node 22.12+ or 24. Run `bash scripts/install.sh`, then `bash scripts/dev.sh`. These commands use SQLite, eager tasks, explicitly selected mock providers and file-based email in ignored `backend/emails/`. Read your own verification email locally; never expose that directory over HTTP. No admin credentials or initial wallet credits are predefined. Create staff with `DEBUG=true .venv/bin/python backend/manage.py createsuperuser`.
 
 For PostgreSQL, Redis and real Celery execution, run `docker compose up --build -d --wait`. Linux bind mounts use UID/GID 1000; override DEV_UID and DEV_GID to match your host. The development stack binds only loopback ports 8000/5173, uses development-only database credentials, persists database/Redis volumes and source-tree private uploads/emails. It deliberately forces mocks. Run `docker compose exec backend python manage.py smoke` for the queued purchase/document/check/PDF flow; it retains labeled test records. Run `docker compose exec backend python manage.py test apps.core` for PostgreSQL tests, including concurrent spending. `docker compose stop` preserves data.

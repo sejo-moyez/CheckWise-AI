@@ -14,6 +14,30 @@ To use the application in a browser, either run the repository on your own compu
 
 Requires Python 3.12 and Node 22.12+ or 24.
 
+### Windows (Git Bash)
+
+Install Python 3.12 with the Python launcher and Node.js before running setup. If `python3` is missing on Windows, the scripts automatically try `py -3.12` and `python`. Windows virtual environments use `.venv/Scripts/python.exe`; Linux/macOS use `.venv/bin/python`.
+
+You can install prerequisites from PowerShell using Windows Package Manager:
+
+```powershell
+winget install --exact --id Python.Python.3.12
+winget install --exact --id OpenJS.NodeJS.LTS
+```
+
+Alternatively, use the installers from [python.org](https://www.python.org/downloads/) and [nodejs.org](https://nodejs.org/). Enable the Python launcher during Python installation. Close and reopen Git Bash after installation so it picks up the updated PATH. Confirm `py -3.12 --version` and `node --version` work. Native Windows development runs eager tasks; use Linux containers for production Gunicorn/Celery workers.
+
+From your existing checkout in Git Bash:
+
+```bash
+git pull --ff-only
+bash scripts/install.sh && bash scripts/dev.sh
+```
+
+Run the development server only after installation succeeds. Keep its terminal open and visit `http://localhost:5173` on that same computer.
+
+### Linux / macOS
+
 ```sh
 bash scripts/install.sh
 bash scripts/dev.sh

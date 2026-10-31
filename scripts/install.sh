@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
-cd "$(dirname "$0")/.."
-python3 -m venv .venv
-.venv/bin/pip install --require-hashes -r backend/requirements.lock
+source "$(dirname "$0")/python.sh"
+cd "$CHECKWISE_ROOT"
+checkwise_system_python
+checkwise_node
+"${CHECKWISE_SYSTEM_PYTHON[@]}" -m venv .venv
+checkwise_venv_python
+"$CHECKWISE_PYTHON" -m pip install --require-hashes -r backend/requirements.lock
 export DEBUG=true
-.venv/bin/python backend/manage.py migrate --noinput
-.venv/bin/python backend/manage.py seed
+"$CHECKWISE_PYTHON" backend/manage.py migrate --noinput
+"$CHECKWISE_PYTHON" backend/manage.py seed
 cd frontend
 npm ci --no-fund
 npm run build

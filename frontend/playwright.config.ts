@@ -4,7 +4,7 @@ import os from "node:os";
 
 const database =
   process.env.E2E_DATABASE_URL ||
-  `sqlite:///${path.join(os.tmpdir(), "checkwise-e2e.sqlite3")}`;
+  `sqlite:///${path.join(os.tmpdir(), "checkwise-e2e.sqlite3").replaceAll("\\", "/")}`;
 process.env.E2E_DATABASE_URL = database;
 export default defineConfig({
   testDir: "./tests",
@@ -20,8 +20,7 @@ export default defineConfig({
   },
   webServer: [
     {
-      command:
-        "cd ../backend && ../.venv/bin/python manage.py migrate --noinput && ../.venv/bin/python manage.py seed && ../.venv/bin/python manage.py runserver 127.0.0.1:8000 --noreload",
+      command: "node scripts/e2e-backend.mjs",
       url: "http://127.0.0.1:8000/api/v1/health/",
       timeout: 60000,
       reuseExistingServer: false,
