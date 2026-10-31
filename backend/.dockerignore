@@ -1,0 +1,7 @@
+__pycache__
+*.sqlite3
+media
+staticfiles
+emails
+.env
+*.pyc

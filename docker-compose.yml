@@ -1,0 +1,73 @@
+name: checkwise
+x-backend: &backend
+  image: checkwise-backend:development
+  user: "${DEV_UID:-1000}:${DEV_GID:-1000}"
+  build:
+    context: ./backend
+    secrets: [proxy_ca]
+  environment: &env
+    DEBUG: "true"
+    DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-local-development-only-key-change-before-deployment}
+    DATABASE_URL: postgres://checkwise:development-only@db:5432/checkwise
+    REDIS_URL: redis://redis:6379/0
+    CELERY_TASK_ALWAYS_EAGER: "false"
+    DETECTION_PROVIDER: mock
+    REWRITE_PROVIDER: mock
+    PAYMENT_PROVIDER: mock
+    FRONTEND_URL: http://localhost:5173
+    ALLOWED_HOSTS: localhost,127.0.0.1,backend,testserver
+    REQUESTS_CA_BUNDLE: /run/secrets/proxy_ca
+  volumes: [./backend:/app]
+  secrets: [proxy_ca]
+  depends_on:
+    db: {condition: service_healthy}
+    redis: {condition: service_healthy}
+services:
+  db:
+    image: postgres:16-alpine
+    environment: {POSTGRES_DB: checkwise, POSTGRES_USER: checkwise, POSTGRES_PASSWORD: development-only}
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck: {test: [CMD-SHELL, "pg_isready -U checkwise"], interval: 3s, timeout: 3s, retries: 20}
+  redis:
+    image: redis:7.4-alpine
+    command: redis-server --appendonly yes
+    volumes: [redisdata:/data]
+    healthcheck: {test: [CMD, redis-cli, ping], interval: 3s, timeout: 3s, retries: 20}
+  backend:
+    <<: *backend
+    command: sh -c 'python manage.py migrate --noinput && python manage.py seed && python manage.py runserver 0.0.0.0:8000'
+    ports: [127.0.0.1:8000:8000]
+    healthcheck: {test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health/')"], interval: 5s, timeout: 3s, retries: 30}
+  worker:
+    <<: *backend
+    command: celery -A config worker --loglevel=warning --concurrency=2
+    depends_on:
+      backend: {condition: service_healthy}
+  beat:
+    <<: *backend
+    command: celery -A config beat --loglevel=warning --schedule=/tmp/celerybeat-schedule
+    depends_on:
+      backend: {condition: service_healthy}
+  frontend:
+    image: checkwise-frontend:development
+    build:
+      context: ./frontend
+      target: development
+      secrets: [proxy_ca]
+    command: npm run dev
+    environment: {VITE_API_PROXY: "http://backend:8000", NODE_EXTRA_CA_CERTS: /run/secrets/proxy_ca}
+    secrets: [proxy_ca]
+    volumes: [./frontend:/app, node_modules:/app/node_modules]
+    ports: [127.0.0.1:5173:5173]
+    depends_on:
+      backend: {condition: service_healthy}
+secrets:
+  proxy_ca:
+    file: ${BUILD_CA_BUNDLE:-/etc/ssl/certs/ca-certificates.crt}
+volumes:
+  pgdata:
+  redisdata:
+  media:
+  static:
+  emails:
+  node_modules:

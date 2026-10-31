@@ -1,0 +1,53 @@
+name: checkwise-production
+x-backend: &backend
+  image: checkwise-backend:production
+  build:
+    context: ./backend
+    secrets: [proxy_ca]
+  env_file: .env.production
+  restart: unless-stopped
+  volumes: [private_media:/app/media, static:/app/staticfiles]
+  depends_on:
+    db: {condition: service_healthy}
+    redis: {condition: service_healthy}
+services:
+  db:
+    image: postgres:16-alpine
+    env_file: .env.production
+    restart: unless-stopped
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck: {test: [CMD-SHELL, "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"], interval: 5s, timeout: 3s, retries: 20}
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes: [redisdata:/data]
+    healthcheck: {test: [CMD, redis-cli, ping], interval: 5s, timeout: 3s, retries: 20}
+  backend:
+    <<: *backend
+    command: sh -c 'python manage.py collectstatic --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2 --timeout 60 --access-logfile -'
+    healthcheck: {test: [CMD, python, -c, "import urllib.request; import os; r=urllib.request.Request('http://localhost:8000/api/v1/health/', headers={'Host':os.environ['ALLOWED_HOSTS'].split(',')[0], 'X-Forwarded-Proto':'https'}); urllib.request.urlopen(r)"], interval: 15s, timeout: 5s, retries: 10}
+  worker:
+    <<: *backend
+    command: celery -A config worker --loglevel=warning --concurrency=2
+  beat:
+    <<: *backend
+    command: celery -A config beat --loglevel=warning --schedule=/tmp/celerybeat-schedule
+  frontend:
+    image: checkwise-frontend:production
+    build:
+      context: ./frontend
+      target: production
+      secrets: [proxy_ca]
+    restart: unless-stopped
+    ports: [127.0.0.1:8080:80]
+    depends_on:
+      backend: {condition: service_healthy}
+secrets:
+  proxy_ca:
+    file: ${BUILD_CA_BUNDLE:-/etc/ssl/certs/ca-certificates.crt}
+volumes:
+  pgdata:
+  redisdata:
+  private_media:
+  static:
